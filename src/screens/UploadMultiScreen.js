@@ -12,6 +12,7 @@ import RNFS from 'react-native-fs';
 import Share from 'react-native-share';
 import ImageResizer from 'react-native-image-resizer';
 import { useFocusEffect } from '@react-navigation/native';
+import FormField from '../components/FormField.js';
 
 // 공통 컴포넌트/훅 import
 import ImageComposer from '../components/ImageComposer';
@@ -19,7 +20,6 @@ import { useSharedUploadLogic } from '../hooks/useSharedUploadLogic';
 import API from '../config/api';
 import { canvasConfig } from '../config/compositeConfig'; 
 import styles from './styles/UploadCommonStyles.js'; // 실제 경로에 맞게 수정 필요
-
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -33,45 +33,6 @@ const { width: CANVAS_WIDTH, height: CANVAS_HEIGHT } = {
   내부 UI 컴포넌트 (FormField, ThumbnailList)
 ---------------------------*/
 
-// FormField 컴포넌트 (변경 없음)
-const FormField = React.memo(({ field, value, onChange, isDate, options, validationError, onOpenDatePicker }) => {
-    return (
-        <View style={{ flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#eee', backgroundColor: '#fff' }}>
-            <Text style={{ width: '16.66%', textAlign: 'left', padding: 8, fontWeight: 'bold', color: '#222', fontSize: 14 }}>{field}</Text>
-            <View style={{ flex: 1, marginLeft: '0%' }}>
-                {isDate ? (
-                    <TouchableOpacity
-                        style={{ padding: 8, backgroundColor: '#f9fafb', borderRadius: 6, borderWidth: validationError ? 2 : 1, borderColor: validationError ? '#ef4444' : '#d1d5db', margin: 4, justifyContent: 'flex-start', alignItems: 'flex-start' }}
-                        onPress={() => onOpenDatePicker(field)}
-                    >
-                        <Text style={{ fontSize: 14, color: '#222', textAlign: 'left' }}>{value || '날짜 선택'}</Text>
-                    </TouchableOpacity>
-                ) : options && options.length > 0 ? (
-                    <ScrollView horizontal style={{ padding: 4 }} showsHorizontalScrollIndicator={false}>
-                        {options.map(option => (
-                            <TouchableOpacity
-                                key={option}
-                                style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6, backgroundColor: value === option ? '#3b82f6' : '#f3f4f6', marginRight: 6, alignItems: 'flex-start' }}
-                                onPress={() => onChange(option)}
-                            >
-                                <Text style={{ color: value === option ? '#fff' : '#222', fontWeight: 'bold', textAlign: 'left' }}>{option === '' ? '값 없음' : option}</Text>
-                            </TouchableOpacity>
-                        ))}
-                    </ScrollView>
-                ) : (
-                    <TextInput
-                        style={{ padding: 8, fontSize: 14, color: '#222', backgroundColor: '#f9fafb', borderRadius: 6, borderWidth: validationError ? 2 : 1, borderColor: validationError ? '#ef4444' : '#d1d5db', margin: 4, textAlign: 'left' }}
-                        value={value}
-                        onChangeText={text => onChange(text)}
-                        placeholder={field}
-                        placeholderTextColor="#9ca3af"
-                    />
-                )}
-                {validationError && <Text style={{ color: '#ef4444', fontSize: 12, paddingRight: 8 }}>(필수)</Text>}
-            </View>
-        </View>
-    );
-});
 
 
 const ThumbnailList = React.memo(({ items, selectedItemId, onSelect, onRemove }) => (
@@ -103,7 +64,7 @@ const ThumbnailList = React.memo(({ items, selectedItemId, onSelect, onRemove })
 
 const UploadMultiScreen = ({ navigation, route }) => {
     // 1. 공통 훅 사용
-    const sharedLogic = useSharedUploadLogic(navigation, route, 'batch'); 
+    const sharedLogic = useSharedUploadLogic(navigation, route, 'multi'); 
 
     // 2. 이미지/업로드 관련 상태 (로컬 상태 유지)
     const [items, setItems] = useState([]); // { id, uri, rotation, formDataSnapshot } 배열
@@ -111,6 +72,7 @@ const UploadMultiScreen = ({ navigation, route }) => {
     const [uploadProgress, setUploadProgress] = useState(0);
     const [uploading, setUploading] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [uploadedThumbnails, setUploadedThumbnails] = useState([]); // 썸네일 목록 상태 추가
     const canvasRef = useRef(null);
     
     // 계산된 상태
@@ -135,7 +97,7 @@ const UploadMultiScreen = ({ navigation, route }) => {
     useFocusEffect(
         React.useCallback(() => {
             const saveMode = async () => {
-                await AsyncStorage.setItem('uploadMode', 'batch');
+                await AsyncStorage.setItem('uploadMode', 'multi');
             };
             saveMode();
         }, [])
@@ -261,87 +223,123 @@ const UploadMultiScreen = ({ navigation, route }) => {
     };
 
     const handleUpload = async () => {
-        if (!selectedForm) return Alert.alert('오류', '양식을 선택해주세요');
-        if (items.length === 0) return Alert.alert('오류', '사진을 추가해주세요');
-        if (!validateForm()) return Alert.alert('입력 오류', '현재 선택된 항목의 필수 항목을 입력해주세요');
-        
-        setUploading(true);
-        setUploadProgress(0);
+    if (!selectedForm) return Alert.alert('오류', '양식을 선택해주세요');
+    if (items.length === 0) return Alert.alert('오류', '사진을 추가해주세요');
+    if (!validateForm()) return Alert.alert('입력 오류', '현재 선택된 항목의 필수 항목을 입력해주세요');
+    
+    // Auto-save logic has ensured all item data is current in the 'items' array.
+    
+    setUploading(true);
+    setUploadProgress(0);
 
-        const initialSelectedItemId = selectedItemId;
-        const initialFormData = { ...formData };
-        try {
-            const userData = await AsyncStorage.getItem('user');
-            const userObj = userData ? JSON.parse(userData) : null;
-            if (!userObj?.token) {
-                Alert.alert('오류', '로그인이 필요합니다.');
-                navigation.replace('Login');
-                return;
-            }
+    const initialSelectedItemId = selectedItemId;
+    const initialFormData = { ...formData };
+    
+    // 🟢 [핵심 수정] MultiPart FormData 객체 생성
+    const uploadFormData = new FormData();
+    const totalCount = items.length;
 
-            const uploadedPayloads = [];
-
-            // 1. 이미지별 데이터 적용, 캡처, 리사이징 및 페이로드 구성 루프
-            for (let i = 0; i < items.length; i++) {
-                const item = items[i];
-                setSelectedItemId(item.id);
-                setFormData(item.formDataSnapshot);
-                await new Promise(r => setTimeout(r, 150));
-                if (!canvasRef.current) continue;
-                const compositeUri = await canvasRef.current.capture();
-                await saveCompositeToPhone(compositeUri, i + 1);
-                const resizedComposite = await ImageResizer.createResizedImage(
-                    compositeUri, 1024, 1024 * (C_H / C_W), 'JPEG', 70
-                );
-                const finalCompositeUri = resizedComposite.uri;
-                const finalBase64Image = await RNFS.readFile(finalCompositeUri, 'base64');
-                const thumb = await ImageResizer.createResizedImage(finalCompositeUri, 200, 150, 'JPEG', 80);
-                const thumbBase64 = await RNFS.readFile(thumb.uri, 'base64');
-                const thumbnailBase64 = `data:image/jpeg;base64,${thumbBase64}`;
-                const uploadData = {
-                    filename: `${selectedForm.formName}_${i + 1}_${Date.now()}.jpg`,
-                    base64Image: `data:image/jpeg;base64,${finalBase64Image}`,
-                    thumbnail: thumbnailBase64,
-                    imageCount: 1,
-                    fieldData: item.formDataSnapshot,
-                };
-                uploadedPayloads.push(uploadData);
-                setUploadProgress(Math.round(((i + 1) / items.length) * 100));
-            }
-            const finalUploadPayload = {
-                formId: selectedForm._id,
-                formName: selectedForm.formName,
-                totalImageCount: items.length,
-                representativeData: items[0].formDataSnapshot,
-                images: uploadedPayloads,
-            };
-            const resp = await fetch(API.uploadPhoto, {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${userObj.token}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(finalUploadPayload),
-            });
-            const data = await resp.json();
-            if (data?.success) {
-                Alert.alert('성공', `${items.length}개 이미지가 성공적으로 전송 및 기록되었습니다.`);
-            } else {
-                console.error('Batch upload failed:', data);
-                Alert.alert('업로드 실패', data?.error || '서버 응답 오류 (DB 기록 포함 실패)');
-            }
-        } catch (err) {
-            console.error('Upload error:', err);
-            Alert.alert('오류', '업로드 중 오류가 발생했습니다\n' + (err.message || err));
-        } finally {
-            setUploading(false);
-            setUploadProgress(0);
-            if (initialSelectedItemId) {
-                setSelectedItemId(initialSelectedItemId);
-                setFormData(initialFormData);
-            }
+    try {
+        const userData = await AsyncStorage.getItem('user');
+        const userObj = userData ? JSON.parse(userData) : null;
+        if (!userObj?.token) {
+            Alert.alert('오류', '로그인이 필요합니다.');
+            navigation.replace('Login');
+            return;
         }
-    };
+
+        // 1. 🚨 Global Metadata 추가 (서버가 먼저 읽을 정보)
+        uploadFormData.append('formId', selectedForm._id);
+        uploadFormData.append('formName', selectedForm.formName);
+        uploadFormData.append('totalCount', String(totalCount));
+        uploadFormData.append('representativeData', JSON.stringify(items[0].formDataSnapshot));
+        
+        const uploadedThumbnailsData = [];
+
+        // 2. 이미지별 데이터 적용, 캡처, 리사이징 및 FormData 구성 루프
+        for (let i = 0; i < totalCount; i++) {
+            const item = items[i];
+            const index = i + 1;
+            
+            // 캔버스 렌더링을 위해 임시 상태 로드 (리렌더링 유도)
+            setSelectedItemId(item.id);
+            setFormData(item.formDataSnapshot);
+            await new Promise(r => setTimeout(r, 150)); 
+            if (!canvasRef.current) continue;
+            
+            // 2-1. 캔버스 캡처
+            const compositeUri = await canvasRef.current.capture();
+            await saveCompositeToPhone(compositeUri, index); // 휴대폰 저장 (기존 로직)
+            
+            // 2-2. ⚡ [속도 개선] 업로드할 이미지 파일 자체를 리사이징
+            const resizedComposite = await ImageResizer.createResizedImage(
+                compositeUri, 1024, 1024 * (C_H / C_W), 'JPEG', 70
+            );
+            const finalCompositeUri = resizedComposite.uri;
+
+            // 2-3. 썸네일 생성 (Multipart 전송용)
+            const thumb = await ImageResizer.createResizedImage(finalCompositeUri, 200, 150, 'JPEG', 80);
+            const thumbnailUri = thumb.uri; 
+
+            const filename = `${selectedForm.formName}_${index}_${Date.now()}.jpg`;
+
+            // 3. 🟢 [핵심] FormData에 개별 파일 및 데이터 추가 (JSON 구조 배제)
+            uploadFormData.append(`file_${i}`, { // 고유 키 사용: file_0, file_1, ...
+                uri: finalCompositeUri,
+                type: 'image/jpeg',
+                name: filename,
+            });
+            uploadFormData.append(`thumbnail_${i}`, { // 고유 키 사용: thumbnail_0, thumbnail_1, ...
+                uri: thumbnailUri,
+                type: 'image/jpeg',
+                name: `thumb_${filename}`,
+            });
+            uploadFormData.append(`fieldData_${i}`, JSON.stringify(item.formDataSnapshot)); // 데이터 스냅샷 JSON 문자열
+
+            // 클라이언트 UI 썸네일 업데이트 (Base64로 변환하여 UI에 즉시 표시)
+            const thumbBase64 = await RNFS.readFile(thumbnailUri, 'base64');
+            const thumbnailBase64DataUrl = `data:image/jpeg;base64,${thumbBase64}`;
+            uploadedThumbnailsData.push({ uri: thumbnailBase64DataUrl, snapshot: item.formDataSnapshot });
+
+            setUploadProgress(Math.round((index / totalCount) * 100));
+        }
+        
+        // 4. 서버에 전송 (단일 Multipart 요청)
+        const resp = await fetch(API.uploadPhoto, { 
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${userObj.token}`,
+                // Content-Type: 'multipart/form-data'는 fetch가 자동으로 설정
+            },
+            body: uploadFormData, // 🚨 FormData 객체 전송
+        });
+
+        const data = await resp.json();
+        
+        // 5. 응답 처리
+        if (data?.success) {
+            Alert.alert('성공', `${totalCount}개 이미지가 성공적으로 전송 및 기록되었습니다.`);
+            // 업로드 성공 시 UI 썸네일 목록 최종 업데이트
+            setItems([]); // 모든 항목 초기화
+            setUploadedThumbnails(uploadedThumbnailsData); 
+        } else {
+            console.error('Batch upload failed:', data);
+            Alert.alert('업로드 실패', data?.error || '서버 응답 오류 (DB 기록 포함 실패)');
+        }
+    } catch (err) {
+        console.error('Upload error:', err);
+        Alert.alert('오류', '업로드 중 오류가 발생했습니다\n' + (err.message || err));
+    } finally {
+        setUploading(false);
+        setUploadProgress(0);
+        
+        // 업로드 시작 전 상태로 복원
+        if (initialSelectedItemId) {
+            setSelectedItemId(initialSelectedItemId);
+            setFormData(initialFormData);
+        }
+    }
+};
 
     const handleKakaoShare = async () => {
         if (!selectedItem) return;
@@ -386,25 +384,40 @@ const UploadMultiScreen = ({ navigation, route }) => {
                         </TouchableOpacity>
                     ))}
                 </ScrollView>
-
-                {/* 2. 정보 입력 */}
+ {/* 2. 정보 입력 */}
                 {selectedForm && (
                     <View>
                         <View style={{ marginBottom: 16 }}>
                             <View style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, overflow: 'hidden', marginBottom: 12 }}>
-                                {(selectedForm.fields || []).map(field => {
-                                    const isDateField = ['일자', '날짜', '공사일', 'date'].some(k => field.toLowerCase().includes(k));
-                                    const options = selectedForm.fieldOptions?.[field] && Array.isArray(selectedForm.fieldOptions[field]) ? selectedForm.fieldOptions[field] : null;
+                                {entries.map(entry => {
+                                    // field가 객체일 경우 name/_id/string 변환
+                                    const field = typeof entry.field === 'object'
+                                        ? entry.field.name || entry.field._id || JSON.stringify(entry.field)
+                                        : entry.field;
+                                    const type = entry.type || 'text';
+                                    const options = entry.options || null;
+                                    const isDateField = type === 'date';
+                                    // value가 객체일 경우 name/_id/string 변환
+                                    const value = typeof formData[field] === 'object'
+                                        ? formData[field]?.name || formData[field]?._id || ''
+                                        : formData[field];
+                                    // placeholder 지정
+                                    let placeholder = field;
+                                    if (type === 'date') placeholder = '날짜 선택';
+                                    else if (type === 'number') placeholder = '숫자만 입력';
+                                    else if (type === 'select') placeholder = '옵션 선택';
                                     return (
                                         <FormField
                                             key={field}
                                             field={field}
-                                            value={formData[field]}
+                                            value={value}
                                             onChange={val => updateField(field, val)}
                                             isDate={isDateField}
                                             options={options}
                                             validationError={!!validationErrors[field]}
                                             onOpenDatePicker={f => setDatePickerField(f)}
+                                            type={type}
+                                            placeholder={placeholder}
                                         />
                                     );
                                 })}

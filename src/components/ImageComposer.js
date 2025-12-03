@@ -1,5 +1,5 @@
 import React, { forwardRef } from 'react';
-import { View, Image, Text, StyleSheet } from 'react-native';
+import { View, Image, Text, StyleSheet, Alert } from 'react-native';
 import ViewShot from 'react-native-view-shot';
 
 const ImageComposer = forwardRef(({
@@ -73,8 +73,8 @@ const ImageComposer = forwardRef(({
           overflow: 'hidden',
         }}>
           {tableEntries.map((entry, index) => {
-            const cellValue = (formData[entry.field] || '').trim();
-            
+            const cellValue = (formData[entry.field.name] || '').trim();
+            console.log('Rendering table entry:', entry, 'with value:', cellValue);
             return (
               <View 
                 key={index} 
@@ -102,7 +102,9 @@ const ImageComposer = forwardRef(({
                   }}
                   numberOfLines={1}
                   ellipsizeMode="tail"
-                >{entry.field}</Text>
+                >
+                  {typeof entry.field === 'object' ? (entry.field.name || entry.field._id || JSON.stringify(entry.field)) : entry.field}
+                </Text>
                 
                 {/* 2열: 데이터 값 */}
                 <Text

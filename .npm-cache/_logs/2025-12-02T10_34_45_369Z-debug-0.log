@@ -7,7 +7,15 @@
 6 silly config:load:file:C:\Users\jjcha\AppData\Roaming\npm\etc\npmrc
 7 verbose title npm exec react-native run-android
 8 verbose argv "exec" "--" "react-native" "run-android"
-9 verbose logfile logs-max:10 dir:D:\fairproject\SugoLog\.npm-cache\_logs\2025-11-29T09_28_25_944Z-
-10 verbose logfile D:\fairproject\SugoLog\.npm-cache\_logs\2025-11-29T09_28_25_944Z-debug-0.log
+9 verbose logfile logs-max:10 dir:D:\fairproject\SugoLog\.npm-cache\_logs\2025-12-02T10_34_45_369Z-
+10 verbose logfile D:\fairproject\SugoLog\.npm-cache\_logs\2025-12-02T10_34_45_369Z-debug-0.log
 11 silly logfile start cleaning logs, removing 1 files
 12 silly logfile done cleaning log files
+13 http fetch GET 200 https://registry.npmjs.org/npm 287ms
+14 notice
+14 notice New [31mmajor[39m version of npm available! [31m10.7.0[39m -> [34m11.6.4[39m
+14 notice Changelog: [34mhttps://github.com/npm/cli/releases/tag/v11.6.4[39m
+14 notice To update run: [4mnpm install -g npm@11.6.4[24m
+14 notice  { force: true, [Symbol(proc-log.meta)]: true }
+15 verbose exit 0
+16 info ok

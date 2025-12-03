@@ -21,7 +21,7 @@ const cellPaddingX = canvasConfig.table.cellPaddingX;
 const cellPaddingY = canvasConfig.table.cellPaddingY;
 
 
-export const useSharedUploadLogic = (navigation, route, mode = 'single') => {
+export const useSharedUploadLogic = (navigation, route, mode = 'each') => {
   const [user, setUser] = useState(null);
   const [forms, setForms] = useState([]);
   const [selectedForm, setSelectedForm] = useState(null);
@@ -62,35 +62,49 @@ export const useSharedUploadLogic = (navigation, route, mode = 'single') => {
     if (userData) setUser(JSON.parse(userData));
   };
 
-  const fetchForms = useCallback(async () => {
-    setLoading(true);
-    try {
-      const userData = await AsyncStorage.getItem('user');
-      const userObj = userData ? JSON.parse(userData) : null;
-      if (!userObj?.token) {
-        Alert.alert('오류', '로그인이 필요합니다.');
-        return;
-      }
-      const res = await fetch(API.forms, {
-        headers: { Authorization: `Bearer ${userObj.token}`, 'Content-Type': 'application/json' },
-      });
-      const data = await res.json();
-      if (data.success) {
-        setForms((data.forms || []).filter(f => f.isActive !== false).map(f => ({
-          ...f,
-          fields: Array.isArray(f.fields) ? f.fields : [],
-          fieldOptions: f.fieldOptions || {},
-        })));
-      } else {
-        Alert.alert('오류', data.error || '양식 목록을 불러올 수 없습니다.');
-      }
-    } catch (err) {
-      console.error('Fetch forms error:', err);
-      Alert.alert('오류', '양식 목록을 불러오지 못했습니다');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+const fetchForms = useCallback(async () => {
+    setLoading(true);
+    try {
+      const userData = await AsyncStorage.getItem('user');
+      const userObj = userData ? JSON.parse(userData) : null;
+        
+      // 1. 🚨 [수정] 인증 및 ID 검사 강화
+      if (!userObj?.token || !userObj.companyId || !userObj.teamId) {
+        Alert.alert('오류', '로그인이 필요하거나 권한 정보가 부족합니다.');
+        setLoading(false); 
+        return;
+      }
+
+      const companyId = userObj.companyId;
+      const teamId = userObj.teamId;
+        
+      // 2. 🟢 [수정] 동적 API URL 구성: /api/companies/ID/teams/ID/forms
+      const url = `${API.companyTeamsBase}/${companyId}/teams/${teamId}/forms`;
+
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${userObj.token}`, 'Content-Type': 'application/json' },
+      });
+        
+      // 3. 응답 처리
+      const data = await res.json();
+      
+      if (data.success) {
+        setForms((data.forms || []).filter(f => f.isActive !== false).map(f => ({
+          ...f,
+          fields: Array.isArray(f.fields) ? f.fields : [],
+
+
+        })));
+      } else {
+        Alert.alert('오류', data.error || '양식 목록을 불러올 수 없습니다.');
+      }
+    } catch (err) {
+      console.error('Fetch forms error:', err);
+      Alert.alert('오류', '양식 목록을 불러오지 못했습니다');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   const restoreUploadState = async () => {
     const storedMode = await AsyncStorage.getItem('uploadMode');
@@ -111,29 +125,78 @@ export const useSharedUploadLogic = (navigation, route, mode = 'single') => {
 
   const handleSelectForm = useCallback(async (form) => {
     setSelectedForm(form);
-    const initialData = {};
-    const today = new Date().toISOString().split('T')[0];
-    (Array.isArray(form.fields) ? form.fields : []).forEach(field => {
-      const lower = String(field).toLowerCase();
-      if (lower.includes('일자') || lower.includes('날짜') || lower.includes('공사일') || lower.includes('date')) {
-        initialData[field] = today;
-      } else {
-        initialData[field] = '';
+    // form 상세 조회 (field option/type 포함)
+    try {
+      const userData = await AsyncStorage.getItem('user');
+      const userObj = userData ? JSON.parse(userData) : null;
+      if (!userObj?.token || !userObj.companyId || !userObj.teamId) {
+        Alert.alert('오류', '로그인이 필요하거나 권한 정보가 부족합니다.');
+        return;
       }
-    });
-    setFormData(initialData);
-    setValidationErrors({});
-    
-    await AsyncStorage.setItem('uploadMode', mode);
-    await AsyncStorage.setItem('prevUploadForm', JSON.stringify(form));
-    await AsyncStorage.setItem('prevUploadFormData', JSON.stringify(initialData));
+      const companyId = userObj.companyId;
+      const teamId = userObj.teamId;
+      const formId = form._id || form.id;
+      const url = `${API.companyTeamsBase}/${companyId}/teams/${teamId}/forms/${formId}`;
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${userObj.token}`, 'Content-Type': 'application/json' },
+      });
+      const data = await res.json();
+      if (!data.success || !data.form) {
+        Alert.alert('오류', data.error || '양식 상세 정보를 불러올 수 없습니다.');
+        return;
+      }
+      const detailForm = data.form;
+      setSelectedForm(detailForm);
+      // 필드별 타입/옵션에 따라 초기값 구성
+      const initialData = {};
+      const now = new Date();
+      const kstOffset = 9 * 60;
+      const kstTime = now.getTime() + (now.getTimezoneOffset() * 60000) + (kstOffset * 60000);
+      const kstDate = new Date(kstTime);
+      const year = kstDate.getFullYear();
+      const month = String(kstDate.getMonth() + 1).padStart(2, '0');
+      const day = String(kstDate.getDate()).padStart(2, '0');
+      const today = `${year}-${month}-${day}`;
+      (Array.isArray(detailForm.fields) ? detailForm.fields : []).forEach(field => {
+        // 타입/옵션 추출: field 객체에서 직접
+        let key = typeof field === 'object' ? field.name : field;
+        let type = 'text';
+        let options = [];
+        if (typeof field === 'object') {
+          type = field.type || 'text';
+          options = Array.isArray(field.options) ? field.options : [];
+        }
+        // options를 initialData에 같이 저장 (for debugging/inspection, not for formData)
+        if (type === 'date') {
+          initialData[key] = today;
+        } else if (type === 'number') {
+          initialData[key] = '';
+        } else if (type === 'select' && options.length > 0) {
+          // 목록형: 첫 값 또는 빈 값
+          initialData[key] = options[0] || '';
+        } else {
+          initialData[key] = '';
+        }
+      });
+      setFormData(initialData);
+      console.log('Initial form data set:', initialData);
+      setValidationErrors({});
+      await AsyncStorage.setItem('uploadMode', mode);
+      await AsyncStorage.setItem('prevUploadForm', JSON.stringify(detailForm));
+      await AsyncStorage.setItem('prevUploadFormData', JSON.stringify(initialData));
+    } catch (err) {
+      Alert.alert('오류', '양식 상세 정보를 불러오지 못했습니다');
+      setFormData({});
+      setValidationErrors({});
+    }
   }, [mode]);
 
   const validateForm = useCallback(async () => {
     if (!selectedForm) return false;
     const errors = {};
     selectedForm.fields.forEach(field => {
-      if (!formData[field] || String(formData[field]).trim() === '') errors[field] = true;
+      const key = typeof field === 'object' ? field.name : field;
+      if (!formData[key] || String(formData[key]).trim() === '') errors[key] = true;
     });
     setValidationErrors(errors);
     
@@ -166,19 +229,34 @@ export const useSharedUploadLogic = (navigation, route, mode = 'single') => {
   // --- 테이블 계산 (useMemo를 사용하여 성능 최적화) ---
   
   const { entries, tableConfig } = useMemo(() => {
-    const entries = (selectedForm?.fields || []).map(field => ({ field }));
+    // entries에 type, options 포함 (field 객체에서 직접)
+    const entries = (selectedForm?.fields || []).map(field => {
+      let type = 'text';
+      let options = [];
+      if (typeof field === 'object') {
+        type = field.type || 'text';
+        options = Array.isArray(field.options) ? field.options : [];
+      }
+      return { field, type, options };
+    });
     
     // fontPx 추출 및 fontSize 계산 (캔버스 비율에 맞춤)
     const fontPx = parseInt(((canvasConfig.table.font || '').match(/(\d+)px/) || [])[1] || '16', 10);
     const fontSize = Math.max(10, Math.floor(CANVAS_WIDTH * fontPx / canvasConfig.width));
     
-    // 최소 너비 및 텍스트 너비 계산
-    const minCol1Width = fontSize * 6 * 1.1;
+    // 최소 너비 및 텍스트 너비 계산 (한글 4글자 기준, 실제 필드명 중 가장 긴 글자수 기준)
+    const minCol1Width = fontSize * 4 * 1.1; // 한글 4글자 기준
     const minCol2Width = fontSize * 9 * 1.1;
     let col1Width = CANVAS_WIDTH * canvasConfig.table.col1Ratio * (2 / 3);
-    let col1TextMax = Math.max(...entries.map(e => (e.field.length * fontSize * 0.6)), 0);
-    let col2TextMax = Math.max(...entries.map(e => ((formData[e.field] || '').length * fontSize * 0.6)), 0);
-    
+    // 필드명이 객체일 경우 name을 사용
+    let col1TextMax = Math.max(...entries.map(e => {
+      const fieldName = typeof e.field === 'object' ? (e.field.name || '') : e.field;
+      return (fieldName.length * fontSize * 0.6);
+    }), 0);
+    let col2TextMax = Math.max(...entries.map(e => {
+      const fieldName = typeof e.field === 'object' ? (e.field.name || '') : e.field;
+      return ((formData[fieldName] || '').length * fontSize * 0.6);
+    }), 0);
     let col1FinalWidth = Math.max(col1Width, minCol1Width, col1TextMax + cellPaddingX * 2 + 12);
     let col2FinalWidth = Math.max(minCol2Width, col2TextMax + cellPaddingX * 2 + 12);
     

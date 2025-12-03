@@ -7,8 +7,8 @@
 6 silly config:load:file:C:\Users\jjcha\AppData\Roaming\npm\etc\npmrc
 7 verbose title npm exec react-native run-android
 8 verbose argv "exec" "--" "react-native" "run-android"
-9 verbose logfile logs-max:10 dir:D:\fairproject\SugoLog\.npm-cache\_logs\2025-11-29T01_15_32_013Z-
-10 verbose logfile D:\fairproject\SugoLog\.npm-cache\_logs\2025-11-29T01_15_32_013Z-debug-0.log
+9 verbose logfile logs-max:10 dir:D:\fairproject\SugoLog\.npm-cache\_logs\2025-12-02T11_02_49_113Z-
+10 verbose logfile D:\fairproject\SugoLog\.npm-cache\_logs\2025-12-02T11_02_49_113Z-debug-0.log
 11 silly logfile start cleaning logs, removing 1 files
 12 silly logfile done cleaning log files
 13 verbose exit 0
