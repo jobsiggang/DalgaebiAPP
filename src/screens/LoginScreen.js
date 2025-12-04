@@ -212,8 +212,8 @@ const LoginScreen = ({ navigation }) => {
             <StatusBar barStyle="light-content" backgroundColor="#3b82f6" />
 
             <View style={styles.header}>
-                <Text style={styles.title}>📸 현장 기록 앱</Text>
-                <Text style={styles.subtitle}>팀/직원 로그인</Text>
+                <Text style={styles.title}>📸 달개비 현장 기록 앱</Text>
+                <Text style={styles.subtitle}>직원/팀장 로그인</Text>
             </View>
 
             <ScrollView style={styles.form}>

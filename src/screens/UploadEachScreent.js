@@ -9,6 +9,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import RNFS from 'react-native-fs';
+import { saveCompositeImageToPhone } from '../hooks/useCompositeImageSaver';
+import Geolocation from 'react-native-geolocation-service';
 import Share from 'react-native-share';
 import ImageResizer from 'react-native-image-resizer';
 import { useFocusEffect } from '@react-navigation/native';
@@ -82,7 +84,8 @@ const UploadEachScreen = ({ navigation, route }) => {
     const [uploading, setUploading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [uploadedThumbnails, setUploadedThumbnails] = useState([]); // 썸네일 목록 상태 추가
-    const canvasRef = useRef(null);
+    const canvasRef = useRef(null); // 프리뷰용(저해상도)
+    const hiResCanvasRef = useRef(null); // 고해상도 캡처용
     const [canvasImageUri, setCanvasImageUri] = useState(null); // 캔버스 전용 이미지 URI
     const [images, setImages] = useState([]); // 원본 이미지 배열
     const [selectedImageIndex, setSelectedImageIndex] = useState(null); // 선택된 이미지 인덱스
@@ -244,26 +247,56 @@ useEffect(() => {
         const img = imageParam || selectedImage;
         const uri = uriParam || canvasImageUri;
         if (!img && !uri) return;
-        if (!canvasRef.current && !uri) throw new Error('캔버스 참조를 찾을 수 없습니다.');
+        if (!hiResCanvasRef.current && !canvasRef.current && !uri) throw new Error('캔버스 참조를 찾을 수 없습니다.');
 
         setSaving(true);
         try {
             await new Promise(r => setTimeout(r, 120));
             let compositeUri;
-            if (img && canvasRef.current) {
+            // 고해상도 캔버스 우선 사용
+            if (hiResCanvasRef.current && hiResCanvasRef.current.capture) {
+                compositeUri = await hiResCanvasRef.current.capture();
+            } else if (canvasRef.current && canvasRef.current.capture) {
                 compositeUri = await canvasRef.current.capture();
             } else if (uri) {
                 compositeUri = uri;
             } else {
                 throw new Error('저장할 이미지가 없습니다');
             }
+            // 원본 저장 (사진 촬영 시만, 옵션 체크)
+            if (canvasConfig.saveOriginalPhoto && img?.uri && img?.fileName) {
+                const origDir = Platform.OS === 'android' ? `${RNFS.ExternalStorageDirectoryPath}/DCIM/${canvasConfig.saveFolder}` : `${RNFS.PicturesDirectoryPath}/${canvasConfig.saveFolder}`;
+                const origExists = await RNFS.exists(origDir);
+                if (!origExists) { await RNFS.mkdir(origDir); }
+                const origPath = `${origDir}/ORIGINAL_${img.fileName}`;
+                await RNFS.copyFile(img.uri, origPath);
+            }
+            // 위치정보 저장 (옵션 체크)
+            let location = null;
+            if (canvasConfig.useLocation) {
+                try {
+                    location = await new Promise((resolve, reject) => {
+                        Geolocation.getCurrentPosition(
+                            pos => resolve(pos.coords),
+                            err => resolve(null),
+                            { enableHighAccuracy: true, timeout: 5000, maximumAge: 10000 }
+                        );
+                    });
+                } catch (e) { location = null; }
+            }
+            // dalgaebi 폴더 저장
             const fileName = `합성이미지_1_${Date.now()}.jpg`;
-            const destDir = Platform.OS === 'android' ? `${RNFS.ExternalStorageDirectoryPath}/DCIM/Camera` : RNFS.PicturesDirectoryPath;
-            const destPath = `${destDir}/${fileName}`;
+            const destDir = Platform.OS === 'android' ? `${RNFS.ExternalStorageDirectoryPath}/DCIM/${canvasConfig.saveFolder}` : `${RNFS.PicturesDirectoryPath}/${canvasConfig.saveFolder}`;
             const dirExists = await RNFS.exists(destDir);
             if (!dirExists) { await RNFS.mkdir(destDir); }
+            const destPath = `${destDir}/${fileName}`;
             await RNFS.copyFile(compositeUri, destPath);
             if (Platform.OS === 'android' && RNFS.scanFile) { try { await RNFS.scanFile(destPath); } catch (e) { /* ignore */ } }
+            // 위치정보를 별도 파일로 저장 (예시)
+            if (location) {
+                const locPath = `${destDir}/${fileName.replace('.jpg', '.json')}`;
+                await RNFS.writeFile(locPath, JSON.stringify(location), 'utf8');
+            }
         } catch (err) {
             console.error('Save error:', err);
             Alert.alert('오류', '이미지 저장에 실패했습니다\n' + (err.message || err));
@@ -272,16 +305,7 @@ useEffect(() => {
             setSaving(false);
         }
     };
-    const saveCompositeToPhone = async (compositeUri, index) => {
-        const fileName = `합성이미지_${index}_${Date.now()}.jpg`;
-        const destDir = Platform.OS === 'android' ? `${RNFS.ExternalStorageDirectoryPath}/DCIM/Camera` : RNFS.PicturesDirectoryPath;
-        const destPath = `${destDir}/${fileName}`;
-
-        const dirExists = await RNFS.exists(destDir);
-        if (!dirExists) { await RNFS.mkdir(destDir); }
-        await RNFS.copyFile(compositeUri, destPath);
-        if (Platform.OS === 'android' && RNFS.scanFile) { try { await RNFS.scanFile(destPath); } catch (e) { /* ignore */ } }
-    };
+    // 공통 저장 로직으로 분리
 
     // 🟢 handleUpload: MultiPart/form-data 방식으로 전송
    const handleUpload = async () => {
@@ -330,15 +354,18 @@ useEffect(() => {
             await new Promise(r => setTimeout(r, 150)); 
             if (!canvasRef.current) continue;
             
-            // 2-1. 캔버스 캡처
-            const compositeUri = await canvasRef.current.capture();
-            await saveCompositeToPhone(compositeUri, index); // 휴대폰 저장 (기존 로직)
-            
-            // 2-2. ⚡ [속도 개선] 업로드할 이미지 파일 자체를 리사이징
-            const resizedComposite = await ImageResizer.createResizedImage(
-                compositeUri, 1024, 1024 * (C_H / C_W), 'JPEG', 100
-            );
-            const finalCompositeUri = resizedComposite.uri;
+
+            // 2-1. 고해상도 캔버스 캡처
+            // hiResCanvasRef가 있으면 고해상도, 없으면 기존 방식 fallback
+            let compositeUri;
+            if (hiResCanvasRef.current && hiResCanvasRef.current.capture) {
+                compositeUri = await hiResCanvasRef.current.capture();
+            } else {
+                compositeUri = await canvasRef.current.capture();
+            }
+            await saveCompositeImageToPhone({ compositeUri, img: item, index }); // 휴대폰 저장 (공통 로직)
+            // 2-2. 업로드용 파일 지정
+            const finalCompositeUri = compositeUri;
 
             // 2-3. 썸네일 생성 (Multipart 전송용)
             const thumb = await ImageResizer.createResizedImage(finalCompositeUri, 200, 150, 'JPEG', 80);
@@ -531,10 +558,11 @@ useEffect(() => {
                         
                         {/* 4. 미리보기(캔버스 + 표 오버레이) + 회전 버튼 */}
                         {selectedImage || canvasImageUri ? (
+                            <>
+                            {/* 프리뷰용(저해상도) */}
                             <View style={{ position: 'relative', width: C_W + 4, height: C_H + 4, alignItems: 'center', justifyContent: 'center' }}>
                                 <ImageComposer
                                     ref={canvasRef}
-                                    // 💡 selectedImage가 있으면 원본(images) 사용, 없으면 썸네일 URI+회전값 사용
                                     selectedImage={selectedImage || (canvasImageUri ? { uri: canvasImageUri, rotation: currentRotation, width: C_W, height: C_H } : null)}
                                     rotation={currentRotation}
                                     canvasDims={{ width: C_W, height: C_H }}
@@ -567,7 +595,31 @@ useEffect(() => {
                                     <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 20 }}>✔</Text>
                                 </TouchableOpacity>
                             </View>
-                        ): null}
+                            {/* 고해상도 캔버스(숨김, 캡처용) - 반드시 실제 해상도로 렌더링 */}
+                            <View
+                                style={{
+                                    width: canvasConfig.width,
+                                    height: canvasConfig.height,
+                                    position: 'absolute',
+                                    left: -9999,
+                                    top: -9999,
+                                    opacity: 0,
+                                    zIndex: -9999,
+                                }}
+                                pointerEvents="none"
+                            >
+                                <ImageComposer
+                                    ref={hiResCanvasRef}
+                                    selectedImage={selectedImage || (canvasImageUri ? { uri: canvasImageUri, rotation: currentRotation, width: canvasConfig.width, height: canvasConfig.height } : null)}
+                                    rotation={currentRotation}
+                                    canvasDims={{ width: canvasConfig.width, height: canvasConfig.height }}
+                                    tableEntries={entries}
+                                    tableConfig={tableConfig}
+                                    formData={formData}
+                                />
+                            </View>
+                            </>
+                        ) : null}
 
                         {/* 5. 썸네일 리스트 */}
                         {uploadedThumbnails.length > 0 && (

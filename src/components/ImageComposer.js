@@ -42,7 +42,7 @@ const ImageComposer = forwardRef(({
     <View style={[styles.containerOuter, { width: CANVAS_WIDTH, height: CANVAS_HEIGHT }]}>
       <ViewShot 
         ref={ref} 
-        options={{ format: 'jpg', quality: 0.9 }} 
+        options={{ format: 'jpg', quality: 1.0 }} // jpg, 최고 화질
         style={{ width: CANVAS_WIDTH, height: CANVAS_HEIGHT }}
       >
         {/* 1. 배경 이미지 */}

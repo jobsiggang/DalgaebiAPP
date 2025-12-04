@@ -246,7 +246,7 @@ console.log('userObj확인:', userObj);
     
     // 최소 너비 및 텍스트 너비 계산 (한글 4글자 기준, 실제 필드명 중 가장 긴 글자수 기준)
     const minCol1Width = fontSize * 4 * 1.1; // 한글 4글자 기준
-    const minCol2Width = fontSize * 9 * 1.1;
+    const minCol2Width = fontSize * 6 * 1.1; // 한글 6글자 기준으로 변경
     let col1Width = CANVAS_WIDTH * canvasConfig.table.col1Ratio * (2 / 3);
     // 필드명이 객체일 경우 name을 사용
     let col1TextMax = Math.max(...entries.map(e => {
@@ -266,7 +266,7 @@ console.log('userObj확인:', userObj);
     
     if (tableWidth > MAX_TABLE_WIDTH) {
       tableWidth = MAX_TABLE_WIDTH;
-      col1FinalWidth = Math.max(col1Width, minCol1Width);
+      // col1FinalWidth는 그대로 두고 col2FinalWidth만 줄임
       col2FinalWidth = tableWidth - col1FinalWidth;
     }
 
