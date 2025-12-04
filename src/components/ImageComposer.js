@@ -94,7 +94,7 @@ const ImageComposer = forwardRef(({
                     paddingVertical: cellPaddingY, // 기존 패딩 유지 (선택적)
                     fontSize,
                     color: textColor,
-                    fontWeight: 'normal',
+                    fontWeight: 'bold', // 글자를 진하게
                     borderRightWidth: 1,
                     borderRightColor: borderColor,
                     textAlignVertical: 'center', // 수직 중앙 정렬
@@ -114,7 +114,7 @@ const ImageComposer = forwardRef(({
                     paddingVertical: cellPaddingY, // 기존 패딩 유지 (선택적)
                     fontSize,
                     color: textColor,
-                    fontWeight: 'normal', // 값은 bold를 제거하여 시각적 구분
+                    fontWeight: 'bold', // 글자를 진하게
                     textAlignVertical: 'center', // 수직 중앙 정렬
                     textAlign: 'left',
                   }}

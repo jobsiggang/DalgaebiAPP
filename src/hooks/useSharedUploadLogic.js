@@ -67,7 +67,6 @@ const fetchForms = useCallback(async () => {
     try {
       const userData = await AsyncStorage.getItem('user');
       const userObj = userData ? JSON.parse(userData) : null;
-        
       // 1. 🚨 [수정] 인증 및 ID 검사 강화
       if (!userObj?.token || !userObj.companyId || !userObj.teamId) {
         Alert.alert('오류', '로그인이 필요하거나 권한 정보가 부족합니다.');
@@ -76,6 +75,7 @@ const fetchForms = useCallback(async () => {
       }
 
       const companyId = userObj.companyId;
+console.log('userObj확인:', userObj);
       const teamId = userObj.teamId;
         
       // 2. 🟢 [수정] 동적 API URL 구성: /api/companies/ID/teams/ID/forms
@@ -96,7 +96,7 @@ const fetchForms = useCallback(async () => {
 
         })));
       } else {
-        Alert.alert('오류', data.error || '양식 목록을 불러올 수 없습니다.');
+        Alert.alert('오류',url, data.error || '양식 목록을 불러올 수 없습니다.');
       }
     } catch (err) {
       console.error('Fetch forms error:', err);

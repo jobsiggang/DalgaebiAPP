@@ -336,7 +336,7 @@ useEffect(() => {
             
             // 2-2. ⚡ [속도 개선] 업로드할 이미지 파일 자체를 리사이징
             const resizedComposite = await ImageResizer.createResizedImage(
-                compositeUri, 1024, 1024 * (C_H / C_W), 'JPEG', 70
+                compositeUri, 1024, 1024 * (C_H / C_W), 'JPEG', 100
             );
             const finalCompositeUri = resizedComposite.uri;
 

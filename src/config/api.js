@@ -1,4 +1,4 @@
-const API_BASE_URL = 'https://sugolog-server.vercel.app';
+const API_BASE_URL = 'https://dalgaebi-server.vercel.app';
 
 export const API = {
     // 💡 기본 URL (클라이언트에서 동적 경로 구성 시 사용)

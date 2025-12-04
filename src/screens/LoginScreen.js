@@ -39,11 +39,27 @@ const LoginScreen = ({ navigation }) => {
             // 🚨 실제 checkAuth 로직: 토큰 유효성 검사 및 자동 리디렉션
             const savedStr = await AsyncStorage.getItem('user');
             if (savedStr) {
-                 const user = JSON.parse(savedStr);
-                 if (user.token) {
-                     navigation.replace('MainTabs', { screen: 'UploadEach' }); 
-                     return true;
-                 }
+                const user = JSON.parse(savedStr);
+                if (user.token) {
+                    // 서버에서 사용자 활성화 상태 확인
+                    const res = await fetch(API.userStatus, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${user.token}`,
+                        },
+                        body: JSON.stringify({ userId: user.userId }),
+                    });
+                    const data = await res.json();
+                    if (res.ok && data.success && data.isActive !== false) {
+                        navigation.replace('MainTabs', { screen: 'UploadEach' });
+                        return true;
+                    } else {
+                        Alert.alert('접근 불가', '사용자 계정이 비활성화되었습니다. 관리자에게 문의하세요.');
+                        await AsyncStorage.removeItem('user');
+                        return false;
+                    }
+                }
             }
             return false;
         } catch (err) {
@@ -98,7 +114,7 @@ const LoginScreen = ({ navigation }) => {
             // 🚨 [수정 반영] API.companyTeamsBase를 사용하여 /api/companies/ID/teams 경로로 조회
             const response = await fetch(`${API.companyTeamsBase}/${companyId}/teams`);
             const data = await response.json();
-           Alert.alert("팀:",JSON.stringify(data))
+        //    Alert.alert("팀:",JSON.stringify(data))
             if (response.ok && data.success && data.teams) {
                 setTeams(data.teams);
                 if (data.teams.length > 0) {
@@ -196,7 +212,7 @@ const LoginScreen = ({ navigation }) => {
             <StatusBar barStyle="light-content" backgroundColor="#3b82f6" />
 
             <View style={styles.header}>
-                <Text style={styles.title}>📸 공정한 현장 기록 앱</Text>
+                <Text style={styles.title}>📸 현장 기록 앱</Text>
                 <Text style={styles.subtitle}>팀/직원 로그인</Text>
             </View>
 
