@@ -1,8 +1,9 @@
 // App.tsx
-import React from 'react';
+import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import LoginScreen from './src/screens/LoginScreen';
 import UploadEachScreen from './src/screens/UploadEachScreent';
 import UploadMultiScreen from './src/screens/UploadMultiScreen';
@@ -42,6 +43,30 @@ function MainTabs() {
 }
 
 function App() {
+  // 앱 시작 시 임시 데이터 정리 (비정상 종료 복구)
+  useEffect(() => {
+    const cleanupTemporaryData = async () => {
+      try {
+        // 업로드 진행 중 상태 초기화
+        const uploadingStates = [
+          'uploading',
+          'uploadProgress',
+          'pendingUpload',
+          'tempImageUri',
+          'tempFormData',
+          'multiUploadQueue'
+        ];
+        
+        await AsyncStorage.multiRemove(uploadingStates);
+        console.log('✅ 임시 업로드 상태 정리 완료');
+      } catch (e) {
+        console.error('Temporary data cleanup error:', e);
+      }
+    };
+    
+    cleanupTemporaryData();
+  }, []);
+
   return (
     <NavigationContainer>
       <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>

@@ -1,0 +1,17 @@
+{
+	"folders": [
+		{
+			"path": "../../../fair_app"
+		},
+		{
+			"path": "../.."
+		}
+	],
+	"settings": {
+		"tailwindCSS.includeLanguages": {
+			"css": "css",
+			"postcss": "css",
+			"typescript": "javascript"
+		}
+	}
+}
