@@ -64,25 +64,21 @@ const ImageOverlay = forwardRef(({
         fontFamily,
     };
 
-    // 이미지 크기 조정 (회전 고려 + imageFit 설정)
+    // 이미지 크기 조정 (회전에 따라 가로세로 스왑)
     const imageFit = canvasConfig?.imageFit || 'stretch';
     const imageRotation = rotation ?? selectedImage.rotation ?? 0;
     const rotationNormalized = imageRotation % 360;
     
+    // stretch 모드: 캔버스 전체를 채우기 (여백 없음)
+    // 🚨 회전 시 가로세로 스왑 (90도, 270도일 때)
     let imgWidth = dims.width;
     let imgHeight = dims.height;
     
-    if (imageFit === 'stretch') {
-        // stretch: 캔버스 전체를 채우기 (여백 없음, 비율 무시)
-        imgWidth = dims.width;
-        imgHeight = dims.height;
+    if (rotationNormalized === 90 || rotationNormalized === 270) {
+        // 90도 또는 270도 회전: 가로세로 스왑
+        imgWidth = dims.height;
+        imgHeight = dims.width;
     }
-    if (imageFit === 'stretch' && (rotationNormalized === 90 || rotationNormalized === 270)) {
-            // 90도 또는 270도 회전: 가로세로 스왑
-            imgHeight = dims.width;     
-            imgWidth = dims.height;
-        } 
-       
 
 
     const content = (

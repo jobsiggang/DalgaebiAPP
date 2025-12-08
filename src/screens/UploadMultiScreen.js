@@ -58,18 +58,8 @@ const UploadMultiScreen = ({ navigation, route }) => {
         return calculateTableConfig(hiResDims);
     }, [calculateTableConfig, hiResDims, formData, configVersion]);
 
-    // 🚨 회전에 따른 동적 캔버스 크기 계산
-    const rotatedCanvasDims = useMemo(() => {
-        const rotation = currentRotation % 360;
-        // 90도 또는 270도 회전: 가로세로 스왑
-        if (rotation === 90 || rotation === 270) {
-            return {
-                width: hiResDims.height,
-                height: hiResDims.width,
-            };
-        }
-        return hiResDims;
-    }, [currentRotation, hiResDims]);
+    // 🚨 캔버스는 항상 고정 (회전 안함), 사진만 회전
+    // rotatedCanvasDims 제거 - 캔버스는 항상 hiResDims 사용
     
     // 💡 [핵심 - 자동 저장(Auto-Save) 로직]
     useEffect(() => {
@@ -670,11 +660,9 @@ const UploadMultiScreen = ({ navigation, route }) => {
                             </View>
                             
                             {/* 🚨 고해상도 캔버스 영역 (숨김, 캡처 전용) */}
-                           
-                            {/* 🚨 고해상도 캔버스 영역 (숨김, 캡처 전용) */}
                             <View
                                 style={{
-                                    width: rotatedCanvasDims.width, height: rotatedCanvasDims.height,
+                                    width: hiResDims.width, height: hiResDims.height,
                                     position: 'absolute', left: -9999, top: -9999, 
                                     opacity: 0, zIndex: -9999,
                                 }}
@@ -684,7 +672,7 @@ const UploadMultiScreen = ({ navigation, route }) => {
                                     ref={hiResCanvasRef}
                                     selectedImage={selectedItem}
                                     rotation={currentRotation}
-                                    canvasDims={rotatedCanvasDims} 
+                                    canvasDims={hiResDims} 
                                     tableEntries={entries}
                                     tableConfig={dynamicTableConfigHiRes}
                                     formData={formData}

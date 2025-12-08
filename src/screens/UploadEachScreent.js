@@ -79,18 +79,8 @@ const UploadEachScreen = ({ navigation, route }) => {
         return calculateTableConfig(hiResDims);
     }, [calculateTableConfig, hiResDims, formData, tableConfigHiRes, sharedLogic?.configVersion]);
 
-    // 🚨 회전에 따른 동적 캔버스 크기 계산
-    const rotatedCanvasDims = useMemo(() => {
-        const rotation = currentRotation % 360;
-        // 90도 또는 270도 회전: 가로세로 스왑
-        if (rotation === 90 || rotation === 270) {
-            return {
-                width: hiResDims.height,
-                height: hiResDims.width,
-            };
-        }
-        return hiResDims;
-    }, [currentRotation, hiResDims]);
+    // 🚨 캔버스는 항상 고정 (회전 안함), 사진만 회전
+    // rotatedCanvasDims 제거 - 캔버스는 항상 hiResDims 사용
     
     // 💡 [핵심 - 새로운 이미지 선택 시 items에 추가 (누적)]
     useEffect(() => {
@@ -681,7 +671,7 @@ const UploadEachScreen = ({ navigation, route }) => {
                             {/* 🚨 고해상도 캔버스 영역 (숨김, 캡처 전용) */}
                             <View
                                 style={{
-                                    width: rotatedCanvasDims.width, height: rotatedCanvasDims.height,
+                                    width: hiResDims.width, height: hiResDims.height,
                                     position: 'absolute', left: -9999, top: -9999, 
                                     opacity: 0, zIndex: -9999,
                                 }}
@@ -691,7 +681,7 @@ const UploadEachScreen = ({ navigation, route }) => {
                                     ref={hiResCanvasRef}
                                     selectedImage={selectedImage || { uri: canvasImageUri, rotation: currentRotation }}
                                     rotation={currentRotation}
-                                    canvasDims={rotatedCanvasDims} 
+                                    canvasDims={hiResDims} 
                                     tableEntries={entries}
                                     tableConfig={dynamicTableConfigHiRes}
                                     formData={formData}

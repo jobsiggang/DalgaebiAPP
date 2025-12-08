@@ -263,19 +263,33 @@ export const useSharedUploadLogic = (navigation, route, mode = 'each') => {
       // 폰트 크기: 기본 해상도(hiResDims.width)를 기준으로 목표 해상도에 맞춰 계산
       const fontSize = Math.max(10, Math.floor((baseFontPx / hiResDims.width) * targetDims.width));
 
-      const minCol1Width = fontSize * 5 * 1.1;
-      const minCol2Width = fontSize * 8 * 1.1;
+      const minCol1Width = fontSize * 4 * 1.3;
+      const minCol2Width = fontSize * 6 * 1.3;
 
       // 문자당 픽셀 환산값을 조금 더 넉넉하게 잡아 텍스트가 잘리지 않도록 함
-      const charPx = fontSize * 1;
+      const charPx = fontSize * 1.3;
 
       let col1TextMax = Math.max(...entries.map(e => {
         const fieldName = typeof e.field === 'object' ? (e.field.name || '') : e.field;
         return (fieldName.length * charPx);
       }), 0);
+      
+      // 🚨 Col2: 현재 입력값 + 모든 옵션의 최대 길이 고려
       let col2TextMax = Math.max(...entries.map(e => {
         const fieldName = typeof e.field === 'object' ? (e.field.name || '') : e.field;
-        return ((formData[fieldName] || '').length * charPx);
+        const currentValueLength = ((formData[fieldName] || '').length * charPx);
+        
+        // 선택지 필드인 경우 모든 옵션의 최대 길이도 고려
+        const field = e.field;
+        let maxOptionLength = 0;
+        if (e.type === 'select' && field?.options && Array.isArray(field.options)) {
+          maxOptionLength = Math.max(...field.options.map(opt => {
+            const optionText = typeof opt === 'object' ? (opt.value || opt.label || '') : opt;
+            return optionText.toString().length * charPx;
+          }), 0);
+        }
+        
+        return Math.max(currentValueLength, maxOptionLength);
       }), 0);
 
       const paddingTotal = (cellPaddingX || 0) * 2;
