@@ -1,19 +1,21 @@
-name: iOS Build
+name: iOS Build & TestFlight
 
 on:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: macos-latest
     
     steps:
-    - uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v3
     
-    - name: Install Node
+    - name: Setup Node.js
       uses: actions/setup-node@v3
       with:
         node-version: '18'
@@ -23,6 +25,15 @@ jobs:
     
     - name: Install iOS dependencies
       run: cd ios && pod install && cd ..
+    
+    - name: Setup Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '3.0'
+    
+    - name: Install Fastlane
+      run: |
+        sudo gem install fastlane -NV
     
     - name: Build iOS app
       run: |
@@ -39,10 +50,22 @@ jobs:
         xcodebuild -exportArchive \
           -archivePath build/Dalgaebi.xcarchive \
           -exportOptionsPlist ExportOptions.plist \
-          -exportPath build/output
+          -exportPath build/output \
+          -allowProvisioningUpdates
+    
+    - name: Upload to TestFlight
+      env:
+        APPLE_ID: ${{ secrets.APPLE_ID }}
+        APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+        TEAM_ID: ${{ secrets.TEAM_ID }}
+      run: |
+        cd ios
+        fastlane beta
     
     - name: Upload artifact
-      uses: actions/upload-artifact@v3
+      if: always()
+      uses: actions/upload-artifact@v4
       with:
-        name: Dalgaebi.ipa
+        name: Dalgaebi-IPA
         path: ios/build/output/Dalgaebi.ipa
+        retention-days: 30
