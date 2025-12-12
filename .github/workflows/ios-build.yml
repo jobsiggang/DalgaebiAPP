@@ -1,4 +1,4 @@
-name: iOS Build & TestFlight
+name: iOS Build
 
 on:
   push:
@@ -20,52 +20,38 @@ jobs:
       with:
         node-version: '18'
     
-    - name: Install dependencies
+    - name: Install npm dependencies
       run: npm install
     
     - name: Install iOS dependencies
-      run: cd ios && pod install && cd ..
-    
-    - name: Setup Ruby
-      uses: ruby/setup-ruby@v1
-      with:
-        ruby-version: '3.0'
-    
-    - name: Install Fastlane
       run: |
-        sudo gem install fastlane -NV
+        cd ios
+        pod install
+        cd ..
     
     - name: Build iOS app
       run: |
         cd ios
-        xcodebuild -workspace Dalgaebi.xcworkspace \
+        xcodebuild \
+          -workspace Dalgaebi.xcworkspace \
           -scheme Dalgaebi \
           -configuration Release \
-          -archivePath build/Dalgaebi.xcarchive \
-          archive
+          -archivePath ../build/Dalgaebi.xcarchive \
+          archive \
+          CODE_SIGN_IDENTITY="" \
+          CODE_SIGNING_REQUIRED=NO
     
-    - name: Export IPA
+    - name: Show build output
+      if: always()
       run: |
-        cd ios
-        xcodebuild -exportArchive \
-          -archivePath build/Dalgaebi.xcarchive \
-          -exportOptionsPlist ExportOptions.plist \
-          -exportPath build/output \
-          -allowProvisioningUpdates
+        echo "=== Build Directory ==="
+        ls -la build/ || echo "No build directory"
+        ls -la ios/build/ || echo "No ios/build directory"
     
-    - name: Upload to TestFlight
-      env:
-        APPLE_ID: ${{ secrets.APPLE_ID }}
-        APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-        TEAM_ID: ${{ secrets.TEAM_ID }}
-      run: |
-        cd ios
-        fastlane beta
-    
-    - name: Upload artifact
+    - name: Upload build log
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: Dalgaebi-IPA
-        path: ios/build/output/Dalgaebi.ipa
-        retention-days: 30
+        name: build-logs
+        path: ~/Library/Logs/xcodebuild/
+        retention-days: 7
