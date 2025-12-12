@@ -163,7 +163,13 @@ const ImageOverlay = forwardRef(({
         return (
             <ViewShot 
                 ref={ref} 
-                options={{ format: 'jpg', quality: 1.0, width: canvasDims.width, height: canvasDims.height }}
+                options={{ 
+                    format: 'jpg', 
+                    quality: 1.0,  // ← 최고 품질 (손실 최소)
+                    width: canvasDims.width, 
+                    height: canvasDims.height,
+                    result: 'tmpfile'  // ← 임시 파일로 저장 (메모리 절약)
+                }}
                 style={{ width: canvasDims.width, height: canvasDims.height, backgroundColor: '#fff' }}
             >
                 {content}

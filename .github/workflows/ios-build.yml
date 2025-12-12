@@ -1,0 +1,48 @@
+name: iOS Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: macos-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Install Node
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+    
+    - name: Install dependencies
+      run: npm install
+    
+    - name: Install iOS dependencies
+      run: cd ios && pod install && cd ..
+    
+    - name: Build iOS app
+      run: |
+        cd ios
+        xcodebuild -workspace Dalgaebi.xcworkspace \
+          -scheme Dalgaebi \
+          -configuration Release \
+          -archivePath build/Dalgaebi.xcarchive \
+          archive
+    
+    - name: Export IPA
+      run: |
+        cd ios
+        xcodebuild -exportArchive \
+          -archivePath build/Dalgaebi.xcarchive \
+          -exportOptionsPlist ExportOptions.plist \
+          -exportPath build/output
+    
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: Dalgaebi.ipa
+        path: ios/build/output/Dalgaebi.ipa

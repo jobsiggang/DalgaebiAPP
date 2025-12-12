@@ -42,7 +42,7 @@ export async function saveCompositeImageToPhone({ compositeUri, originalUri, img
         }
     }
     
-    // 합성사진은 dalgaebi 폴더에 저장
+    // 🚨 합성사진 고품질 저장 (갤러리용)
     // 업로드 파일이름과 동일한 형식 사용 (formName_index_timestamp.jpg)
     const fileName = `${formData?.formName || 'photo'}_${index}_${Date.now()}.jpg`;
     const destDir = Platform.OS === 'android' 
@@ -50,8 +50,19 @@ export async function saveCompositeImageToPhone({ compositeUri, originalUri, img
         : `${RNFS.PicturesDirectoryPath}/${canvasConfig.saveFolder}`;
     const dirExists = await RNFS.exists(destDir);
     if (!dirExists) { await RNFS.mkdir(destDir); }
+    
     const destPath = `${destDir}/${fileName}`;
-    await RNFS.copyFile(hiResUri, destPath);
+    
+    // ViewShot 캡처 결과가 tmpfile인 경우 직접 복사, 아니면 URI로 복사
+    // 🚨 고품질 유지를 위해 직접 파일 복사 (재인코딩 방지)
+    try {
+        await RNFS.copyFile(hiResUri, destPath);
+    } catch (err) {
+        console.warn('High quality copy failed, fallback to standard copy:', err);
+        // Fallback: 재인코딩 위험 있지만 호환성 보장
+        await RNFS.copyFile(compositeUri, destPath);
+    }
+    
     if (Platform.OS === 'android' && RNFS.scanFile) { 
         try { await RNFS.scanFile(destPath); } catch (e) { /* ignore */ } 
     }
