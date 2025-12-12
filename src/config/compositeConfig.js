@@ -9,7 +9,7 @@ export const canvasConfig = {
     borderColor: "rgba(0,0,0,0.3)",
     borderWidth: 1,
     // font: "system", // 시스템 글꼴
-    fontBasePx: 16, // 표 글자 기본 px (해상도 1024 기준)
+    fontBasePx: 20, // 표 글자 기본 px (해상도 1024 기준)
     textColor: "#000", // 표 글씨색 (기본: 검정)
     cellPaddingX: 2,
     cellPaddingY: 0,

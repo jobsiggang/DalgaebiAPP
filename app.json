@@ -1,4 +1,10 @@
 {
   "name": "Dalgaebi",
-  "displayName": "달개비현장"
+  "displayName": "달개비현장",
+  "extra": {
+    "eas": {
+      "projectId": "6a772ba3-5c9b-46e2-bb92-05b900a4ae18"
+    }
+  },
+  "owner": "smilebugs-organization"
 }

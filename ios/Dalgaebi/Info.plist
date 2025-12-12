@@ -6,9 +6,8 @@
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
-	<!-- <key>CFBundleDisplayName</key> -->
+	<key>CFBundleDisplayName</key>
 	<string>달개비현장</string>
-	<string>Dalgaebi</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
