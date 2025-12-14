@@ -9,7 +9,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import RNFS from 'react-native-fs';
-import { saveCompositeImageToPhone } from '../hooks/useCompositeImageSaver';
+import { saveCompositeImageToPhone, isIOSSimulator } from '../hooks/useCompositeImageSaver';
 import Share from 'react-native-share';
 import ImageResizer from 'react-native-image-resizer';
 import { useFocusEffect } from '@react-navigation/native';
@@ -296,9 +296,18 @@ const UploadMultiScreen = ({ navigation, route }) => {
                         formDataSnapshot: item.formDataSnapshot
                     });
 
-                    const saveDir = Platform.OS === 'android'
-                        ? `${RNFS.ExternalStorageDirectoryPath}/DCIM/${canvasConfig.saveFolder}`
-                        : `${RNFS.PicturesDirectoryPath}/${canvasConfig.saveFolder}`;
+                    // ✅ iOS 시뮬레이터 감지하여 저장 경로 결정
+                    const isSimulator = Platform.OS === 'ios' && await isIOSSimulator();
+                    let saveDir;
+                    if (isSimulator) {
+                        // iOS 시뮬레이터: 문서 디렉토리 사용
+                        saveDir = `${RNFS.DocumentDirectoryPath}/${canvasConfig.saveFolder || 'CompositePhotos'}`;
+                    } else {
+                        // Android & 실제 iOS: 사진 폴더 사용
+                        saveDir = Platform.OS === 'android'
+                            ? `${RNFS.ExternalStorageDirectoryPath}/DCIM/${canvasConfig.saveFolder}`
+                            : `${RNFS.PicturesDirectoryPath}/${canvasConfig.saveFolder}`;
+                    }
 
                     const dirExists = await RNFS.exists(saveDir);
                     if (!dirExists) await RNFS.mkdir(saveDir);

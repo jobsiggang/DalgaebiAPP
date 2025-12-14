@@ -120,19 +120,46 @@ const LoginScreen = ({ navigation }) => {
         setSelectedCompany(null);
 
         try {
-            const response = await fetch(`${API.companyLookup}?name=${encodeURIComponent(companyInput)}`);
+            const url = `${API.companyLookup}?name=${encodeURIComponent(companyInput)}`;
+            console.log('📡 회사 조회 API 요청:', url);
+            console.log('📡 API.companyLookup:', API.companyLookup);
+            console.log('📡 입력값:', companyInput);
+            
+            const response = await fetch(url);
+            console.log('📊 회사 조회 응답 상태:', response.status, response.statusText);
+            
             const data = await response.json();
 
+            console.log('📦 회사 조회 API 응답:', { 
+                status: response.status, 
+                success: data.success,
+                hasCompany: !!data.company,
+                fullData: JSON.stringify(data)
+            });
+
             if (response.ok && data.success && data.company) {
+                console.log('✅ 회사 조회 성공:', data.company);
                 setSelectedCompany(data.company);
+                console.log('🔄 fetchTeams 호출 예정 - companyId:', data.company._id);
                 fetchTeams(data.company._id); 
             } else {
+                console.error('❌ 회사 조회 실패:', {
+                    ok: response.ok,
+                    success: data.success,
+                    hasCompany: !!data.company,
+                    error: data.error
+                });
                 setLookupError(data.error || '일치하는 회사명을 찾을 수 없습니다.');
                 Alert.alert('조회 실패', data.error || '회사 조회에 실패했습니다.');
             }
         } catch (error) {
+            console.error('🔴 회사 조회 중 오류:', {
+                message: error.message,
+                name: error.name,
+                stack: error.stack
+            });
             setLookupError('네트워크 오류가 발생했습니다.');
-            Alert.alert('오류', '회사 조회 중 오류 발생');
+            Alert.alert('오류', '회사 조회 중 오류 발생: ' + error.message);
         } finally {
             setLoading(false);
         }
@@ -141,23 +168,49 @@ const LoginScreen = ({ navigation }) => {
     // 🟢 팀 목록 조회 함수 (companyId 필요)
     const fetchTeams = async (companyId) => {
         setLoadingTeams(true);
+        console.log('🔍 fetchTeams 호출됨. companyId:', companyId);
         try {
-            const response = await fetch(`${API.companyTeamsBase}/${companyId}/teams`);
+            const url = `${API.companyTeamsBase}/${companyId}/teams`;
+            console.log('📡 팀 목록 API 요청:', url);
+            console.log('📡 API.companyTeamsBase:', API.companyTeamsBase);
+            
+            const response = await fetch(url);
+            console.log('📊 응답 상태:', response.status, response.statusText);
+            
             const data = await response.json();
+            console.log('📦 팀 목록 API 응답:', { 
+                status: response.status, 
+                success: data.success,
+                teamsCount: data.teams ? data.teams.length : 0,
+                fullData: JSON.stringify(data)
+            });
 
-            if (response.ok && data.success && data.teams) {
+            if (response.ok && data.success && data.teams && Array.isArray(data.teams)) {
+                console.log('✅ 팀 목록 로드 성공:', data.teams);
                 setTeams(data.teams);
                 setSelectedTeamId('');
                 if (data.teams.length === 0) {
                     Alert.alert('알림', '등록된 팀이 없습니다. 관리자에게 문의하세요.');
                 }
             } else {
+                console.error('❌ 팀 목록 조회 실패. 응답:', { 
+                    ok: response.ok, 
+                    success: data.success, 
+                    hasTeams: !!data.teams,
+                    isArray: Array.isArray(data.teams),
+                    error: data.error 
+                });
                 setTeams([]);
                 Alert.alert('조회 실패', data.error || '팀 목록 조회에 실패했습니다.');
             }
         } catch (error) {
-            console.error('Fetch teams error:', error);
+            console.error('🔴 팀 목록 조회 중 오류:', {
+                message: error.message,
+                name: error.name,
+                stack: error.stack
+            });
             setTeams([]);
+            Alert.alert('오류', '팀 목록 조회 중 오류: ' + error.message);
         } finally {
             setLoadingTeams(false);
         }
@@ -301,25 +354,44 @@ const LoginScreen = ({ navigation }) => {
                             </View>
                         ) : (
                             <>
-                                <Text style={styles.loginLabel}>소속 팀 선택</Text>
-                                <View style={styles.loginPickerContainer}>
-                                    <Picker
-                                        selectedValue={selectedTeamId}
-                                        onValueChange={(itemValue) => setSelectedTeamId(itemValue)}
-                                        style={styles.loginPicker}
-                                        enabled={!loading && teams.length > 0}
-                                        mode="dropdown"
-                                    >
-                                        <Picker.Item label="팀을 선택하세요" value="" enabled={true} />
-                                        {teams.map((team) => (
-                                            <Picker.Item
-                                                key={team._id}
-                                                label={team.name}
-                                                value={team._id}
-                                            />
-                                        ))}
-                                    </Picker>
-                                </View>
+                                {teams.length === 0 ? (
+                                    <View style={styles.loginPickerContainer}>
+                                        <Text style={styles.loginErrorText}>
+                                            등록된 팀이 없습니다. 
+                                            {'\n'}teams 상태값: {JSON.stringify(teams)}
+                                            {'\n'}selectedCompany: {selectedCompany ? selectedCompany._id : 'null'}
+                                        </Text>
+                                    </View>
+                                ) : (
+                                    <>
+                                        <Text style={styles.loginLabel}>소속 팀 선택</Text>
+                                        <View style={styles.loginTeamButtonGroup}>
+                                            {teams.map((team) => (
+                                                <TouchableOpacity
+                                                    key={team._id}
+                                                    style={[
+                                                        styles.loginTeamButton,
+                                                        selectedTeamId === team._id && styles.loginTeamButtonSelected
+                                                    ]}
+                                                    onPress={() => {
+                                                        console.log('🎯 팀 선택됨:', team._id, team.name);
+                                                        setSelectedTeamId(team._id);
+                                                    }}
+                                                >
+                                                    <Text
+                                                        style={[
+                                                            styles.loginTeamButtonText,
+                                                            selectedTeamId === team._id && styles.loginTeamButtonTextSelected
+                                                        ]}
+                                                        numberOfLines={1}
+                                                    >
+                                                        {team.name}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            ))}
+                                        </View>
+                                    </>
+                                )}
 
                                 <Text style={styles.loginLabel}>아이디</Text>
                                 <TextInput

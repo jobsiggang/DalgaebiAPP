@@ -10,6 +10,20 @@
 	<string>달개비현장</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIcons</key>
+	<dict>
+		<key>CFBundlePrimaryIcon</key>
+		<dict>
+			<key>CFBundleIconFiles</key>
+			<array>
+				<string>AppIcon</string>
+			</array>
+			<key>CFBundleIconName</key>
+			<string>AppIcon</string>
+		</dict>
+	</dict>
+	<key>CFBundleIconName</key>
+	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
@@ -35,8 +49,10 @@
 	</dict>
 	<key>NSCameraUsageDescription</key>
 	<string>사진 촬영을 위해 카메라 접근이 필요합니다.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+    <string>촬영한 사진을 앨범에 저장하기 위해 접근 권한이 필요합니다.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string></string>
+	<string>위치 정보를 위해 필요함니다(선택)</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>사진 저장 및 앨범 접근을 위해 필요합니다.</string>
 	<key>RCTNewArchEnabled</key>

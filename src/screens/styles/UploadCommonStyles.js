@@ -292,16 +292,45 @@ const styles = StyleSheet.create({
         borderRadius: 12, 
         borderWidth: 1, 
         borderColor: '#dcd8e8', 
-        marginBottom: 5, 
-        height: 60, 
+        marginBottom: 12, 
+        padding: 12,
         justifyContent: 'center',
-        overflow: 'hidden',
+    },
+    // 팀 선택 버튼 그룹
+    loginTeamButtonGroup: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginBottom: 12,
+    },
+    loginTeamButton: {
+        backgroundColor: COLOR_WHITE,
+        borderRadius: 8,
+        borderWidth: 1.5,
+        borderColor: '#dcd8e8',
+        paddingVertical: 10,
+        paddingHorizontal: 14,
+        minWidth: '30%',
+        maxWidth: '48%',
+        alignItems: 'center',
+    },
+    loginTeamButtonSelected: {
+        backgroundColor: COLOR_PRIMARY,
+        borderColor: COLOR_PRIMARY,
+    },
+    loginTeamButtonText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: COLOR_TEXT_DARK,
+    },
+    loginTeamButtonTextSelected: {
+        color: COLOR_WHITE,
     },
     loginPicker: { 
-        height: '100%', 
+        height: 160, 
         color: COLOR_TEXT_DARK, 
         margin: 0, 
-        padding: 0 
+        padding: 8 
     },
 });
 
